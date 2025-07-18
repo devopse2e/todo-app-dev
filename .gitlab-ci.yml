@@ -1,0 +1,75 @@
+workflow:
+  name: TodoApp CI/CD Pipeline
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\/.*/'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+
+variables:
+  NODE_VERSION: "18"
+  NPM_CONFIG_CACHE: "/tmp/npm-cache"
+
+stages:
+  - build
+  - test
+  - security-scan  # Optional: Add security scanning
+  - deploy  # For future deployment stages
+
+# Cache template for reusability
+.node_cache_template: &node_cache
+  cache:
+    key: ${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+    policy: pull-push
+
+before_script:
+  - apk add --no-cache bash curl git
+  - npm config set cache ${NPM_CONFIG_CACHE} --global
+
+build-frontend:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  script: 
+    - cd frontend
+    - npm ci --cache ${NPM_CONFIG_CACHE}
+    - npm run build
+    - echo "Frontend build completed successfully"
+  artifacts:
+    when: on_success
+    expire_in: "1 day"
+    paths:
+      - frontend/dist/
+    reports:
+      dotenv: frontend/build.env  # For passing variables to other jobs
+  cache:
+    key: frontend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/node_modules/
+    policy: pull-push
+  
+build-backend:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  script: 
+    - cd backend
+    - npm ci --cache ${NPM_CONFIG_CACHE}
+    - echo "Backend dependencies installed successfully"
+    # Add any backend build steps if needed
+  artifacts:
+    when: on_success
+    expire_in: "1 day"
+    paths:
+      - backend/
+    exclude:
+      - backend/node_modules/
+  cache:
+    key: backend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/node_modules/
+    policy: pull-push
+
+
