@@ -72,6 +72,16 @@
     "coverageDirectory": "coverage",
     "setupFiles": [
       "whatwg-fetch"
+    ],
+    "reporters": [
+      "default",
+      [
+        "jest-junit",
+        {
+          "outputDirectory": "<rootDir>/frontend",
+          "outputName": "junit.xml"
+        }
+      ]
     ]
   },
   "browserslist": {
