@@ -43,8 +43,6 @@ build-frontend:
     expire_in: "1 day"
     paths:
       - frontend/dist/
-    reports:
-      dotenv: frontend/build.env  # For passing variables to other jobs
   cache:
     key: frontend-${CI_COMMIT_REF_SLUG}
     paths:
@@ -72,4 +70,57 @@ build-backend:
       - backend/node_modules/
     policy: pull-push
 
+test-frontend:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  dependencies:
+    - build-frontend
+  script:
+    - cd frontend
+    - npm ci --cache ${NPM_CONFIG_CACHE}
+    - npm test -- --coverage --watchAll=false --ci
+  artifacts:
+    when: always
+    expire_in: "1 week"
+    paths:
+      - frontend/junit.xml
+      - frontend/coverage/
+    reports:
+      junit: frontend/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+  cache:
+    key: frontend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/node_modules/
+    policy: pull
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+  allow_failure: true
 
+test-backend:
+  stage: test
+  image: node:${NODE_VERSION}-alpine
+  timeout: 2min
+  dependencies:
+    - build-backend
+  script:
+    - cd backend
+    - npm ci --cache ${NPM_CONFIG_CACHE}
+    - npm test -- --forceExit --coverage
+  artifacts:
+    when: always
+    expire_in: "1 week"
+    paths:
+    - backend/junit.xml
+    reports:
+      junit: backend/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage/cobertura-coverage.xml
+  cache:
+    key: backend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/node_modules/
+    policy: pull
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
