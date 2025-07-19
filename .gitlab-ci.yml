@@ -11,7 +11,10 @@ workflow:
 variables:
   NODE_VERSION: "18"
   NPM_CONFIG_CACHE: "/tmp/npm-cache"
-
+  # Docker-specific global variables (non-sensitive)
+  FRONTEND_IMAGE: $DOCKERHUB_USER/todo-app-frontend
+  BACKEND_IMAGE: $DOCKERHUB_USER/todo-app-backend
+  TAG: $CI_COMMIT_SHORT_SHA  # Tags with commit SHA for traceability ; alternative: $CI_PIPELINE_ID
 stages:
   - build
   - test
