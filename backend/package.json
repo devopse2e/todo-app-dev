@@ -47,7 +47,8 @@
           "outputName": "junit.xml"
         }
       ]
-    ]
+    ],
+    "globalTeardown": "./teardown.js"
   }
 }
 

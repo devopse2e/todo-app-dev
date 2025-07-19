@@ -9,7 +9,7 @@ RUN npm ci
 
 # Copy source code and build (transpile with Babel)
 COPY . .
-RUN npm run build 
+#RUN npm run build 
 
 #  (lean runtime image)
 FROM node:18-alpine
@@ -23,8 +23,7 @@ RUN npm ci --only=production && npm cache clean --force  # Kept --only=productio
 
 # Copy built application (dist/ folder only) from builder, with ownership change
 # Note: We don't copy builder's node_modules to avoid including devDeps
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-
+COPY --from=builder --chown=nodejs:nodejs /app .
 # Switch to non-root user
 USER nodejs
 
@@ -36,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Run the transpiled server
-CMD ["node", "dist/server.js"]
+CMD ["node", "server.js"]
