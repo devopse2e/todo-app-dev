@@ -149,7 +149,7 @@ docker-build-frontend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker build -t $FRONTEND_IMAGE:$TAG frontend/ || { echo "Frontend build failed"; exit 1; }   # Build with SHA tag; added error handling
     - if [ "$CI_COMMIT_BRANCH" == "main" ]; then docker tag $FRONTEND_IMAGE:$TAG $FRONTEND_IMAGE:latest; fi 
@@ -164,7 +164,7 @@ docker-build-backend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker build -t $BACKEND_IMAGE:$TAG backend/ || { echo "Backend build failed"; exit 1; }  # Build with SHA tag; added error handling
     - if [ "$CI_COMMIT_BRANCH" == "main" ]; then docker tag $BACKEND_IMAGE:$TAG $BACKEND_IMAGE:latest; fi 
@@ -179,7 +179,7 @@ docker-test-frontend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker run --rm $FRONTEND_IMAGE:$TAG echo "Frontend container starts successfully" || exit 1 
   needs:
@@ -193,7 +193,7 @@ docker-test-backend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker run -d --name backend_test -p 3001:3001 $BACKEND_IMAGE:$TAG || exit 1  # Run detached
     - sleep 10  # Wait for startup
@@ -210,7 +210,7 @@ docker-push-frontend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker push $FRONTEND_IMAGE:$TAG || exit 1
     - if [ "$CI_COMMIT_BRANCH" == "main" ]; then docker push $FRONTEND_IMAGE:latest; fi  # Push :latest only on main
@@ -225,7 +225,7 @@ docker-push-backend:
     - macos
     - shell
   before_script:
-    - docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
   script:
     - docker push $BACKEND_IMAGE:$TAG || exit 1
     - if [ "$CI_COMMIT_BRANCH" == "main" ]; then docker push $BACKEND_IMAGE:latest; fi
