@@ -69,8 +69,8 @@ build-backend:
   resource_group: build
   needs:
     - build-frontend
-  before_script:
-    - rm -rf frontend/dist || true  # Ignore if missing
+  #before_script:
+  #  - rm -rf frontend/dist || true  # Ignore if missing
   tags:
     - macos
     - shell
