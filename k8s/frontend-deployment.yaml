@@ -16,6 +16,9 @@ spec:
       containers:
         - name: frontend
           image: ${DOCKERHUB_USER}/todo-app-frontend:${TAG}
+          env:
+            - name: REACT_APP_API_URL
+              value: "http://backend-service.todo-app.svc.cluster.local:3001"
           ports:
             - containerPort: 80
           envFrom:
