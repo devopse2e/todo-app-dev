@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config  # Ensure this matches your Deployment's volume reference
+  namespace: todo-app  # e.g., todo-app
+data:
+  default.conf: |  # Corrected nginx config
+    server {
+      listen 80;
+      server_name localhost;
+
+      root /usr/share/nginx/html;  # Web root for static assets
+      index index.html index.htm;
+
+      location / {
+        try_files $uri $uri/ /index.html;  # Correct: Serves existing files (e.g., /bundle.js) first, falls back to index.html for SPA routes
+      }
+
+      error_page 500 502 503 504 /50x.html;
+      location = /50x.html {
+        root /usr/share/nginx/html;
+      }
+    }
+

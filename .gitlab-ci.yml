@@ -9,19 +9,26 @@ workflow:
       when: always
 
 variables:
-  GIT_STRATEGY: clone
+  GIT_STRATEGY: fetch
+  GIT_CLEAN_FLAGS: -ffdx -e !.gitignore
   NODE_VERSION: "18"
   NPM_CONFIG_CACHE: "/tmp/npm-cache"
   # Docker-specific global variables (non-sensitive)
   FRONTEND_IMAGE: $DOCKERHUB_USER/todo-app-frontend
   BACKEND_IMAGE: $DOCKERHUB_USER/todo-app-backend
-  TAG: $CI_COMMIT_SHORT_SHA  # Tags with commit SHA for traceability ; alternative: $CI_PIPELINE_ID
+  TAG: $CI_COMMIT_SHORT_SHA  # Tags with commit SHA for traceability;test alternative: $CI_PIPELINE_ID
+  K8S_CONTEXT: kubernetes-the-hard-way
+  K8S_NAMESPACE: todo-app
+  K8S_MANIFEST_DIR: k8s/
+  FULL_CONTEXT: "$CI_PROJECT_PATH:$K8S_CONTEXT" 
+
 stages:
   - build
   - test
   - docker-build
   - docker-test
   - docker-push
+  - deploy
 
 
 #Cache template for reusability
@@ -35,11 +42,12 @@ stages:
 
 before_script:
   #- apk add --no-cache bash curl git
-  - rm -rf backend/node_modules || true  # Ignore if directory missing
+  - rm -rf .tmp/ || true  # Target the problematic .tmp dir
+  - rm -rf backend/node_modules frontend/node_modules || true
   - rm -rf frontend/dist || true
+  - sleep 10
   - npm config set cache ${NPM_CONFIG_CACHE} --global
   - rm -rf $CI_PROJECT_DIR/*.tmp/ || true  # Safely remove temp dirs
-
 build-frontend:
   stage: build
   image: node:${NODE_VERSION}-alpine
@@ -69,11 +77,11 @@ build-backend:
   resource_group: build
   needs:
     - build-frontend
-  #before_script:
-  #  - rm -rf frontend/dist || true  # Ignore if missing
   tags:
     - macos
     - shell
+  before_script:
+    - rm -rf frontend/ backend/node_modules || true  
   script: 
     - cd backend
     - npm ci --cache ${NPM_CONFIG_CACHE}
@@ -143,6 +151,7 @@ test-backend:
     expire_in: "1 week"
     paths:
     - backend/junit.xml
+    - backend/coverage/
     reports:
       junit: backend/junit.xml
       coverage_report:
@@ -170,6 +179,7 @@ docker-build-frontend:
     - build-frontend
   dependencies:
     - build-frontend
+  retry: 2
   
 docker-build-backend:
   stage: docker-build
@@ -251,3 +261,40 @@ docker-push-backend:
     - docker-test-backend
   dependencies:
     - docker-test-backend
+
+deploy-k8s:
+  stage: deploy
+  image: bitnami/kubectl:latest   # Use a Helm image for installation
+  tags:
+    - macos
+    - shell
+  before_script:
+    - apk update && apk add --no-cache bash curl  # Install kubectl and dependencies
+  script:
+    - echo "Setting up kubeconfig"
+    - mkdir -p ~/.kube
+    - echo "$KUBECONFIG_CONTENT"
+    - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config || { echo "Decoding failed"; exit 1; }  # Add error handling
+    - kubectl config view  # Debug: Output the full config for logs
+    - kubectl config get-contexts  # Debug: List available contexts
+    - kubectl config use-context $FULL_CONTEXT || { echo "Context not found"; exit 1; }  # Hardcode for testing; replace with $K8S_CONTEXT later
+    - echo "Installing/Upgrading NGINX Ingress Controller with webhook disabled"
+    - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    - helm repo update
+    - helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.admissionWebhooks.enabled=false || { echo "Helm upgrade failed"; exit 1; }  # Disable webhook
+    - echo "Deploying app manifests"
+    - kubectl create namespace $K8S_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+    - kubectl apply -f $K8S_MANIFEST_DIR 
+    - kubectl rollout status deployment/frontend-deployment --namespace $K8S_NAMESPACE --timeout=2m
+    - kubectl rollout status deployment/backend-deployment --namespace $K8S_NAMESPACE --timeout=2m
+  needs:
+    - docker-push-frontend
+    - docker-push-backend
+  only:
+    - main
+  environment:
+    name: development
+    url: http://todo-app.local
+  #rules:
+   # - when: never
+  
