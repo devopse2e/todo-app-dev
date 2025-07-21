@@ -277,7 +277,7 @@ deploy-k8s:
     - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config || { echo "Decoding failed"; exit 1; }  # Add error handling
     - kubectl config view  # Debug: Output the full config for logs
     - kubectl config get-contexts  # Debug: List available contexts
-    - kubectl config use-context $FULL_CONTEXT || { echo "Context not found"; exit 1; }  # Hardcode for testing; replace with $K8S_CONTEXT later
+    - kubectl config use-context $FULL_CONTEXT || { echo "Context not found"; exit 1; } # Hardcode for testing; replace with $K8S_CONTEXT later
     - echo "Installing/Upgrading NGINX Ingress Controller with webhook disabled"
     - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
     - helm repo update
